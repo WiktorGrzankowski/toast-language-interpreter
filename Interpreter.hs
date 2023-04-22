@@ -16,7 +16,7 @@ type EnvFun = Map String Fun
 type Store = Map Loc Value
 
 data Value = VInt Integer | VStr String | VBool Bool
-data Fun = Fun [Arg] Block deriving Show -- Type argumens Block
+data Fun = Fun { args :: [Arg], block :: Block, staticEnv :: Env, staticEnvFun :: EnvFun } deriving Show -- Type argumens Block
 data Mem = Mem { env :: Env, store :: Store, envFun :: EnvFun } deriving Show
 data StmtReturnValue = VValue Value | VVoid | VContinue | VBreak deriving Show
 type InterpreterMonad a = ExceptT String (StateT Mem IO) a
@@ -46,6 +46,12 @@ getVal location = do
         Nothing -> except $ Left ("No value under given location.")
         Just v -> return v
 
+getFun :: String -> InterpreterMonad Fun
+getFun f = do
+    envF <- gets envFun
+    case Map.lookup f envF of
+        Nothing -> except $ Left("Function called " ++ f ++ " is not in the scope.")
+        Just fun -> return fun
 
 writeLoc :: Loc -> Value -> InterpreterMonad ()
 writeLoc location val = do
@@ -145,6 +151,24 @@ evalExpr (ERel e1 op e2) = do
     let i2 = getInt v2
     let simpleOp = evalRelOp op
     return (VBool (i1 `simpleOp` i2))
+
+-- EApp.      Expr6 ::= Ident "(" [ExprArg] ")" ; -- !!! TODO
+-- narazie ignoruj argumenty
+-- data Fun = Fun { args :: [Arg], block :: Block, staticEnv :: Env } deriving Show
+evalExpr (EApp (Ident f) args) = do
+    function <- getFun f
+    memoryBeforeCall <- get
+    -- zmienić chwilowo środowisko zmiennych na to stare 
+    put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = staticEnvFun function })
+    blockValue <- execBlock $ block function
+    storeAfterFunction <- gets store
+    -- przywróć środowisko zmiennych i funkcji, ale ze zmienionym stanem
+    put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
+-- data StmtReturnValue = VValue Value | VVoid | VContinue | VBreak deriving Show
+    -- zakładamy, że zawsze zwróci sensownie, czyli zwróci Value
+    case blockValue of
+        VValue v -> return v
+    
 
 
 execBlock :: Block -> InterpreterMonad StmtReturnValue
@@ -260,6 +284,31 @@ execStmt (SPrint e) = do
     liftIO $ putStrLn $ show v
     return VVoid
 
+-- FnDef. 	    Stmt ::= Type Ident "(" [Arg] ")" Block ;
+-- data Fun = Fun { args :: [Arg], block :: Block, staticEnv :: Env} deriving Show
+
+
+{-
+evalItems t ((Init (Ident x) e) : rest) = do
+    memory <- get
+    let newLoc = alloc (store memory)
+    value <- evalExpr e
+    put (Mem { env = Map.insert x newLoc (env memory), store = Map.insert newLoc value (store memory), envFun = envFun memory})
+    evalItems t rest  
+-}
+
+-- narazie niech będzie, że tylko przekazywanie przez wartość potem się pomyśyli
+-- ale to głównie kwestia wykonania, a nie deklaracji
+-- nawet narazie myślmy tylko o funkcjach bezparametrowych
+execStmt (FnDef t (Ident funName) args block) = do
+    memory <- get
+    let staticEnv = env memory
+    let staticEnvFun = envFun memory
+    let newFun = Fun { args = args, block = block, staticEnv = staticEnv, staticEnvFun = staticEnvFun }
+    put (Mem { env = env memory, store = store memory, envFun = Map.insert funName newFun (envFun memory) })
+    return VVoid
+
+
 runInterpreter :: Program -> IO ()
 runInterpreter prog = execStateT (runExceptT (catchError (runP prog) handleErr)) emptyMem >> return () where
     emptyMem :: Mem
@@ -267,9 +316,9 @@ runInterpreter prog = execStateT (runExceptT (catchError (runP prog) handleErr))
 
     handleErr :: String -> InterpreterMonad StmtReturnValue
     handleErr err = do
-        liftIO $ putStrLn "cos sie zepsulo i nie było mnie słychać"
+        liftIO $ putStrLn err
         return VVoid
 
-runP :: Program -> InterpreterMonad StmtReturnValue
-runP (Prg []) = return VVoid
-runP (Prg (stmt:rest)) = execStmt stmt >> runP (Prg rest)
+    runP :: Program -> InterpreterMonad StmtReturnValue
+    runP (Prg []) = return VVoid
+    runP (Prg (stmt:rest)) = execStmt stmt >> runP (Prg rest)
