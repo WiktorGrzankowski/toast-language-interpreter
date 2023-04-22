@@ -30,9 +30,9 @@ except ``"`` unless preceded by ``\``.
 The set of reserved words is the set of terminals appearing in the grammar. Those reserved words that consist of non-letter characters are called symbols, and they are treated in a different way from those that are similar to identifiers. The lexer follows rules familiar from languages like Haskell, C, and Java, including longest match and spacing conventions.
 
 The reserved words used in Toast are the following:
-  | ``boolean`` | ``break`` | ``continue`` | ``else``
-  | ``false`` | ``if`` | ``int`` | ``return``
-  | ``string`` | ``true`` | ``while`` |
+  | ``Print`` | ``boolean`` | ``break`` | ``continue``
+  | ``else`` | ``false`` | ``if`` | ``int``
+  | ``return`` | ``string`` | ``true`` | ``while``
 
 The symbols used in Toast are the following:
   | & | , | { | }
@@ -73,6 +73,7 @@ All other symbols are terminals.
   |  |  **|**  | ``while`` ``(`` //Expr// ``)`` //Block//
   |  |  **|**  | ``break`` ``;``
   |  |  **|**  | ``continue`` ``;``
+  |  |  **|**  | ``Print`` ``(`` //Expr// ``)`` ``;``
   |  |  **|**  | //Type// //Ident// ``(`` //[Arg]// ``)`` //Block//
   | //Item// | -> | //Ident//
   |  |  **|**  | //Ident// ``=`` //Expr//
@@ -93,7 +94,7 @@ All other symbols are terminals.
   |  |  **|**  | //Integer//
   |  |  **|**  | ``true``
   |  |  **|**  | ``false``
-  |  |  **|**  | //Ident// ``(`` //[ExprArg]// ``)``
+  |  |  **|**  | //Ident// ``(`` //[Arg]// ``)``
   |  |  **|**  | //String//
   |  |  **|**  | ``(`` //Expr// ``)``
   | //Expr5// | -> | ``-`` //Expr6//

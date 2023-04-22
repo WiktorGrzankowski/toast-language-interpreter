@@ -47,6 +47,7 @@ transStmt x = case x of
   Toast.AbsToast.While expr block -> failure x
   Toast.AbsToast.Break -> failure x
   Toast.AbsToast.Continue -> failure x
+  Toast.AbsToast.SPrint expr -> failure x
   Toast.AbsToast.FnDef type_ ident args block -> failure x
 
 transItem :: Toast.AbsToast.Item -> Result
@@ -71,7 +72,7 @@ transExpr x = case x of
   Toast.AbsToast.ELitInt integer -> failure x
   Toast.AbsToast.ELitTrue -> failure x
   Toast.AbsToast.ELitFalse -> failure x
-  Toast.AbsToast.EApp ident exprargs -> failure x
+  Toast.AbsToast.EApp ident args -> failure x
   Toast.AbsToast.EString string -> failure x
   Toast.AbsToast.Neg expr -> failure x
   Toast.AbsToast.Not expr -> failure x

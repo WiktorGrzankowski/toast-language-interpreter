@@ -177,6 +177,7 @@ instance Print Toast.AbsToast.Stmt where
     Toast.AbsToast.While expr block -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block])
     Toast.AbsToast.Break -> prPrec i 0 (concatD [doc (showString "break"), doc (showString ";")])
     Toast.AbsToast.Continue -> prPrec i 0 (concatD [doc (showString "continue"), doc (showString ";")])
+    Toast.AbsToast.SPrint expr -> prPrec i 0 (concatD [doc (showString "Print"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString ";")])
     Toast.AbsToast.FnDef type_ id_ args block -> prPrec i 0 (concatD [prt 0 type_, prt 0 id_, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 block])
 
 instance Print Toast.AbsToast.Item where
@@ -216,7 +217,7 @@ instance Print Toast.AbsToast.Expr where
     Toast.AbsToast.ELitInt n -> prPrec i 6 (concatD [prt 0 n])
     Toast.AbsToast.ELitTrue -> prPrec i 6 (concatD [doc (showString "true")])
     Toast.AbsToast.ELitFalse -> prPrec i 6 (concatD [doc (showString "false")])
-    Toast.AbsToast.EApp id_ exprargs -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 exprargs, doc (showString ")")])
+    Toast.AbsToast.EApp id_ args -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 args, doc (showString ")")])
     Toast.AbsToast.EString str -> prPrec i 6 (concatD [printString str])
     Toast.AbsToast.Neg expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])
     Toast.AbsToast.Not expr -> prPrec i 5 (concatD [doc (showString "!"), prt 6 expr])

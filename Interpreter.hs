@@ -15,8 +15,12 @@ type Env = Map Var Loc
 type EnvFun = Map String Fun
 type Store = Map Loc Value
 
-data Value = VInt Integer | VStr String | VBool Bool
-data Fun = Fun { args :: [Arg], block :: Block, staticEnv :: Env, staticEnvFun :: EnvFun } deriving Show -- Type argumens Block
+
+data ArgKind = ByValue | ByReference deriving Show
+data FunArg = FunArg { argKind :: ArgKind, argType :: Type, argName :: Var } deriving Show
+
+data Value = VInt Integer | VStr String | VBool Bool 
+data Fun = Fun { args :: [FunArg], block :: Block, staticEnv :: Env, staticEnvFun :: EnvFun } deriving Show
 data Mem = Mem { env :: Env, store :: Store, envFun :: EnvFun } deriving Show
 data StmtReturnValue = VValue Value | VVoid | VContinue | VBreak deriving Show
 type InterpreterMonad a = ExceptT String (StateT Mem IO) a
@@ -41,6 +45,9 @@ getLoc x = do
 
 getVal :: Loc -> InterpreterMonad Value
 getVal location = do
+    -- nowyEnvik <- gets env
+    -- liftIO $ putStrLn $ show nowyEnvik
+    -- liftIO $ putStrLn $ show location
     memory <- get
     case Map.lookup location (store memory) of
         Nothing -> except $ Left ("No value under given location.")
@@ -153,23 +160,74 @@ evalExpr (ERel e1 op e2) = do
     return (VBool (i1 `simpleOp` i2))
 
 -- EApp.      Expr6 ::= Ident "(" [ExprArg] ")" ; -- !!! TODO
--- narazie ignoruj argumenty
+{-
+EArg.      ExprArg ::= Expr ; 
+
+EArgRef.   ExprArg ::= "&" Ident ;
+-}
+
 -- data Fun = Fun { args :: [Arg], block :: Block, staticEnv :: Env } deriving Show
-evalExpr (EApp (Ident f) args) = do
+evalExpr (EApp (Ident f) []) = do
+    -- printuj pierwwszy argument obliczony
+
+
+
     function <- getFun f
     memoryBeforeCall <- get
-    -- zmienić chwilowo środowisko zmiennych na to stare 
+
     put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = staticEnvFun function })
     blockValue <- execBlock $ block function
     storeAfterFunction <- gets store
-    -- przywróć środowisko zmiennych i funkcji, ale ze zmienionym stanem
+
     put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
--- data StmtReturnValue = VValue Value | VVoid | VContinue | VBreak deriving Show
-    -- zakładamy, że zawsze zwróci sensownie, czyli zwróci Value
+    case blockValue of
+        VValue v -> return v
+
+-- argument przez wartość ((EArg e) : rest)
+evalExpr (EApp (Ident f) arguments) = do
+    function <- getFun f
+    memoryBeforeCall <- get
+
+    prepareEnv arguments (args function)
+    memoryWithArguments <- get
+
+    put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = staticEnvFun function })
+    blockValue <- execBlock $ block function
+    storeAfterFunction <- gets store
+
+    put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
+
     case blockValue of
         VValue v -> return v
     
+prepareEnv :: [ExprArg] -> [FunArg] -> InterpreterMonad Env
+{-
+data ArgKind = ByValue | ByReference
+data FunArg = FunArg { argKind :: ArgKind, argType :: Type, argName :: Var } 
+-}
+prepareEnv [] _ = gets env
+prepareEnv ((EArg e) : rest) (funArg : other) = do
+    evalItems (argType funArg) [(Init (Ident (argName funArg)) e)]
+    prepareEnv rest other
 
+-- argument przekazany przez referencję, w funkcji można zmieniać jego wartość
+-- teraz lokacja zmiennej o nazwie 'x' jest równa zmiennej o nazwie 'argName funArg'
+-- prepareEnv ((EArgRef (Ident x)) : rest) (funArg : other) = do
+--     memory <- get
+--     put (Mem { env = Map.insert x newLoc (env memory), store = store memory, envFun = envFun memory})
+-- co w ogóle z tym faktem zrobić? muszę nadpisać istniejącego x
+-- przy wywołaniu funkcji lokacja 'x' to np. 0, a pod 0 w store jest 10, a lokacja 'z' to np 1
+-- wraz z wywołaniem funkcji należy zmienić mapowanie w env 'x', żeby teraz oznaczał miejsce, w którym jest 'z', czyli 1
+-- trzeba zrobić, że env('x') := env ('z'). A wewnątrz funkcji 'z' jest niewidoczne.
+
+{-
+int x = 10;
+int f(int &x) {
+    return x;
+}
+int z = 50;
+Print(f(&z)) # powinno wypisać 50
+-}
 
 execBlock :: Block -> InterpreterMonad StmtReturnValue
 
@@ -284,30 +342,27 @@ execStmt (SPrint e) = do
     liftIO $ putStrLn $ show v
     return VVoid
 
--- FnDef. 	    Stmt ::= Type Ident "(" [Arg] ")" Block ;
--- data Fun = Fun { args :: [Arg], block :: Block, staticEnv :: Env} deriving Show
-
-
-{-
-evalItems t ((Init (Ident x) e) : rest) = do
-    memory <- get
-    let newLoc = alloc (store memory)
-    value <- evalExpr e
-    put (Mem { env = Map.insert x newLoc (env memory), store = Map.insert newLoc value (store memory), envFun = envFun memory})
-    evalItems t rest  
--}
-
--- narazie niech będzie, że tylko przekazywanie przez wartość potem się pomyśyli
--- ale to głównie kwestia wykonania, a nie deklaracji
--- nawet narazie myślmy tylko o funkcjach bezparametrowych
 execStmt (FnDef t (Ident funName) args block) = do
     memory <- get
-    let staticEnv = env memory
+    let staticEnv = env memory -- frozen, but with arguments (x, y, z...) overwritten to default value that will be set on calling the function
     let staticEnvFun = envFun memory
-    let newFun = Fun { args = args, block = block, staticEnv = staticEnv, staticEnvFun = staticEnvFun }
+
+    let newFun = Fun { args = prepareArgs args, block = block, staticEnv = staticEnv, staticEnvFun = staticEnvFun }
     put (Mem { env = env memory, store = store memory, envFun = Map.insert funName newFun (envFun memory) })
     return VVoid
 
+prepareArgs :: [Arg] -> [FunArg]
+prepareArgs args = go args [] where
+    go [] mapped = mapped
+    go ((Ar t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByValue, argType = t, argName = x } : mapped)
+    go ((ArgRef t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByReference, argType = t, argName = x } : mapped)
+{-
+Ar.    	Arg ::= Type Ident;
+ArgRef.	Arg ::= Type "&" Ident ;
+-}
+
+
+    
 
 runInterpreter :: Program -> IO ()
 runInterpreter prog = execStateT (runExceptT (catchError (runP prog) handleErr)) emptyMem >> return () where

@@ -33,6 +33,7 @@ data Stmt
     | While Expr Block
     | Break
     | Continue
+    | SPrint Expr
     | FnDef Type Ident [Arg] Block
   deriving (C.Eq, C.Ord, C.Show, C.Read)
 
@@ -50,7 +51,7 @@ data Expr
     | ELitInt Integer
     | ELitTrue
     | ELitFalse
-    | EApp Ident [ExprArg]
+    | EApp Ident [Arg]
     | EString String
     | Neg Expr
     | Not Expr
