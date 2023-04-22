@@ -212,9 +212,16 @@ prepareEnv ((EArg e) : rest) (funArg : other) = do
 
 -- argument przekazany przez referencję, w funkcji można zmieniać jego wartość
 -- teraz lokacja zmiennej o nazwie 'x' jest równa zmiennej o nazwie 'argName funArg'
--- prepareEnv ((EArgRef (Ident x)) : rest) (funArg : other) = do
---     memory <- get
---     put (Mem { env = Map.insert x newLoc (env memory), store = store memory, envFun = envFun memory})
+prepareEnv ((EArgRef (Ident x)) : rest) (funArg : other) = do
+    memory <- get
+
+    -- weź lokację zmiennej x
+    referencedLocation <- getLoc x
+    let newName = argName funArg
+    -- gets env
+    put (Mem { env = Map.insert newName referencedLocation (env memory), store = store memory, envFun = envFun memory})
+    prepareEnv rest other
+
 -- co w ogóle z tym faktem zrobić? muszę nadpisać istniejącego x
 -- przy wywołaniu funkcji lokacja 'x' to np. 0, a pod 0 w store jest 10, a lokacja 'z' to np 1
 -- wraz z wywołaniem funkcji należy zmienić mapowanie w env 'x', żeby teraz oznaczał miejsce, w którym jest 'z', czyli 1
