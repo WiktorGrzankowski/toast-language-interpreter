@@ -159,23 +159,11 @@ evalExpr (ERel e1 op e2) = do
     let simpleOp = evalRelOp op
     return (VBool (i1 `simpleOp` i2))
 
--- EApp.      Expr6 ::= Ident "(" [ExprArg] ")" ; -- !!! TODO
-{-
-EArg.      ExprArg ::= Expr ; 
-
-EArgRef.   ExprArg ::= "&" Ident ;
--}
-
--- data Fun = Fun { args :: [Arg], block :: Block, staticEnv :: Env } deriving Show
 evalExpr (EApp (Ident f) []) = do
-    -- printuj pierwwszy argument obliczony
-
-
-
     function <- getFun f
     memoryBeforeCall <- get
 
-    put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = staticEnvFun function })
+    put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = Map.insert f (function) (staticEnvFun function) })
     blockValue <- execBlock $ block function
     storeAfterFunction <- gets store
 
@@ -183,7 +171,6 @@ evalExpr (EApp (Ident f) []) = do
     case blockValue of
         VValue v -> return v
 
--- argument przez wartość ((EArg e) : rest)
 evalExpr (EApp (Ident f) arguments) = do
     function <- getFun f
     memoryBeforeCall <- get
@@ -191,7 +178,7 @@ evalExpr (EApp (Ident f) arguments) = do
     prepareEnv arguments (args function)
     memoryWithArguments <- get
 
-    put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = staticEnvFun function })
+    put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
     blockValue <- execBlock $ block function
     storeAfterFunction <- gets store
 
@@ -201,10 +188,6 @@ evalExpr (EApp (Ident f) arguments) = do
         VValue v -> return v
     
 prepareEnv :: [ExprArg] -> [FunArg] -> InterpreterMonad Env
-{-
-data ArgKind = ByValue | ByReference
-data FunArg = FunArg { argKind :: ArgKind, argType :: Type, argName :: Var } 
--}
 prepareEnv [] _ = gets env
 prepareEnv ((EArg e) : rest) (funArg : other) = do
     evalItems (argType funArg) [(Init (Ident (argName funArg)) e)]
