@@ -117,12 +117,18 @@ evalExpr (EAdd e1 op e2) = do
     return (VInt (i1 `simpleOp` i2)) 
 
 evalExpr (EMul e1 op e2) = do
-    v1 <- evalExpr e1
-    v2 <- evalExpr e2
-    let i1 = getInt v1
-    let i2 = getInt v2
-    let simpleOp = evalMulOp op
-    return (VInt (i1 `simpleOp` i2)) 
+    (VInt v1) <- evalExpr e1
+    (VInt v2) <- evalExpr e2
+    calcMul op v1 v2 where
+        calcMul :: MulOp -> Integer -> Integer -> InterpreterMonad Value
+        calcMul (Toast.AbsToast.Times) a b = return $ VInt $ a * b 
+        calcMul (Toast.AbsToast.Div)   _ 0 = throwError $ "Division by zero."
+        calcMul (Toast.AbsToast.Div)   a b = return $ VInt $ a `div` b 
+        calcMul (Toast.AbsToast.Mod)   _ 0 = throwError $ "Modulo by zero."
+        calcMul (Toast.AbsToast.Mod)   a b = return $ VInt $ a `mod` b
+
+    -- let simpleOp = evalMulOp op
+    -- return (VInt (v1 `simpleOp` v2)) 
 
 -- return strings
 evalExpr (EString s) = return (VStr s)
@@ -187,14 +193,15 @@ evalExpr (EApp (Ident f) arguments) = do
     case blockValue of
         VValue v -> return v
     
+
 prepareEnv :: [ExprArg] -> [FunArg] -> InterpreterMonad Env
+
 prepareEnv [] _ = gets env
+
 prepareEnv ((EArg e) : rest) (funArg : other) = do
     evalItems (argType funArg) [(Init (Ident (argName funArg)) e)]
     prepareEnv rest other
 
--- argument przekazany przez referencję, w funkcji można zmieniać jego wartość
--- teraz lokacja zmiennej o nazwie 'x' jest równa zmiennej o nazwie 'argName funArg'
 prepareEnv ((EArgRef (Ident x)) : rest) (funArg : other) = do
     memory <- get
 
@@ -205,19 +212,6 @@ prepareEnv ((EArgRef (Ident x)) : rest) (funArg : other) = do
     put (Mem { env = Map.insert newName referencedLocation (env memory), store = store memory, envFun = envFun memory})
     prepareEnv rest other
 
--- co w ogóle z tym faktem zrobić? muszę nadpisać istniejącego x
--- przy wywołaniu funkcji lokacja 'x' to np. 0, a pod 0 w store jest 10, a lokacja 'z' to np 1
--- wraz z wywołaniem funkcji należy zmienić mapowanie w env 'x', żeby teraz oznaczał miejsce, w którym jest 'z', czyli 1
--- trzeba zrobić, że env('x') := env ('z'). A wewnątrz funkcji 'z' jest niewidoczne.
-
-{-
-int x = 10;
-int f(int &x) {
-    return x;
-}
-int z = 50;
-Print(f(&z)) # powinno wypisać 50
--}
 
 execBlock :: Block -> InterpreterMonad StmtReturnValue
 
