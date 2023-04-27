@@ -24,13 +24,17 @@ data Value = VInt Integer | VStr String | VBool Bool
 data Fun = Fun { args :: [FunArg], block :: Block, staticEnv :: Env, staticEnvFun :: EnvFun } deriving Show
 data Mem = Mem { env :: Env, store :: Store, envFun :: EnvFun } deriving Show
 data StmtReturnValue = VValue Value | VVoid | VContinue | VBreak deriving Show
-data InterpreterError = InterpreterError { text :: String, position :: Pos } deriving Show
+data InterpreterError = InterpreterError { text :: String, position :: Pos } {-deriving Show-}
 type InterpreterMonad a = ExceptT InterpreterError (StateT Mem IO) a
 
 instance Show Value where
     show (VInt n) = show n 
     show (VStr s) = s 
     show (VBool b) = show b
+
+instance Show InterpreterError where
+    show err = "ERROR: " ++ (text err) ++ " Check your code at line " ++ show line ++ " column " ++ show column ++ "." where
+        Just (line, column) = position err
 
 
 alloc :: Store -> Loc
@@ -150,24 +154,24 @@ evalExpr (EApp pos (Ident f) arguments) = do
             throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with a wrong number of arguments. " ++ 
             "Should be " ++ show (length (args function)) ++ " but was " ++ show (length arguments) ++ ".",
             position = pos} 
-        else
-            if not (checkArgumentsKind (args function) arguments)
-                then
-                    throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with wrong kinds of arguments. " ++
-                    "Check if all arguments that are expected to be referenes are called by reference.",
-                    position = pos} 
-                else do
-                    prepareEnv arguments (args function)
-                    memoryWithArguments <- get
+        -- else
+        --     if not (checkArgumentsKind (args function) arguments)
+        --         then
+        --             throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with wrong kinds of arguments. " ++
+        --             "Check if all arguments that are expected to be referenes are called by reference.",
+        --             position = pos} 
+        else do
+            prepareEnv arguments (args function)
+            memoryWithArguments <- get
 
-                    put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
-                    blockValue <- execBlock $ block function
-                    storeAfterFunction <- gets store
+            put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
+            blockValue <- execBlock $ block function
+            storeAfterFunction <- gets store
 
-                    put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
+            put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
 
-                    case blockValue of
-                        VValue v -> return v
+            case blockValue of
+                VValue v -> return v
     where
     checkArgumentsCount :: [FunArg] -> [ExprArg] -> Bool
     checkArgumentsCount functionArguments callArguments = length functionArguments == length callArguments
@@ -325,7 +329,7 @@ execStmt (FnDef _ t (Ident funName) args block) = do
 
 prepareArgs :: [Arg] -> [FunArg]
 prepareArgs args = go args [] where
-    go [] mapped = mapped
+    go [] mapped = reverse mapped
     go ((Ar _ t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByValue, argType = t, argName = x } : mapped)
     go ((ArgRef _ t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByReference, argType = t, argName = x } : mapped)
     
