@@ -51,7 +51,7 @@ data Expr
     | ELitInt Integer
     | ELitTrue
     | ELitFalse
-    | EApp Ident [Arg]
+    | EApp Ident [ExprArg]
     | EString String
     | Neg Expr
     | Not Expr

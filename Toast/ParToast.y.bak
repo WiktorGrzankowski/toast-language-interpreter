@@ -149,7 +149,7 @@ Expr6
   | Integer { Toast.AbsToast.ELitInt $1 }
   | 'true' { Toast.AbsToast.ELitTrue }
   | 'false' { Toast.AbsToast.ELitFalse }
-  | Ident '(' ListArg ')' { Toast.AbsToast.EApp $1 $3 }
+  | Ident '(' ListExprArg ')' { Toast.AbsToast.EApp $1 $3 }
   | String { Toast.AbsToast.EString $1 }
   | '(' Expr ')' { $2 }
 

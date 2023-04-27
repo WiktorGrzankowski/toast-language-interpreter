@@ -18,7 +18,7 @@ import Toast.LexToast
 
 }
 
-%name pProgram Program
+%name pProgram_internal Program
 -- no lexer declaration
 %monad { Err } { (>>=) } { return }
 %tokentype {Token}
@@ -59,148 +59,162 @@ import Toast.LexToast
   '{'        { PT _ (TS _ 34) }
   '||'       { PT _ (TS _ 35) }
   '}'        { PT _ (TS _ 36) }
-  L_Ident    { PT _ (TV $$)   }
-  L_integ    { PT _ (TI $$)   }
-  L_quoted   { PT _ (TL $$)   }
+  L_Ident    { PT _ (TV _)    }
+  L_integ    { PT _ (TI _)    }
+  L_quoted   { PT _ (TL _)    }
 
 %%
 
-Ident :: { Toast.AbsToast.Ident }
-Ident  : L_Ident { Toast.AbsToast.Ident $1 }
+Ident :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Ident) }
+Ident  : L_Ident { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Ident (tokenText $1)) }
 
-Integer :: { Integer }
-Integer  : L_integ  { (read $1) :: Integer }
+Integer :: { (Toast.AbsToast.BNFC'Position, Integer) }
+Integer  : L_integ  { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), (read (tokenText $1)) :: Integer) }
 
-String  :: { String }
-String   : L_quoted { $1 }
+String  :: { (Toast.AbsToast.BNFC'Position, String) }
+String   : L_quoted { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), ((\(PT _ (TL s)) -> s) $1)) }
 
-Program :: { Toast.AbsToast.Program }
-Program : ListStmt { Toast.AbsToast.Prg $1 }
+Program :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Program) }
+Program
+  : ListStmt { (fst $1, Toast.AbsToast.Prg (fst $1) (snd $1)) }
 
-Arg :: { Toast.AbsToast.Arg }
+Arg :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Arg) }
 Arg
-  : Type Ident { Toast.AbsToast.Ar $1 $2 }
-  | Type '&' Ident { Toast.AbsToast.ArgRef $1 $3 }
+  : Type Ident { (fst $1, Toast.AbsToast.Ar (fst $1) (snd $1) (snd $2)) }
+  | Type '&' Ident { (fst $1, Toast.AbsToast.ArgRef (fst $1) (snd $1) (snd $3)) }
 
-ListArg :: { [Toast.AbsToast.Arg] }
+ListArg :: { (Toast.AbsToast.BNFC'Position, [Toast.AbsToast.Arg]) }
 ListArg
-  : {- empty -} { [] }
-  | Arg { (:[]) $1 }
-  | Arg ',' ListArg { (:) $1 $3 }
+  : {- empty -} { (Toast.AbsToast.BNFC'NoPosition, []) }
+  | Arg { (fst $1, (:[]) (snd $1)) }
+  | Arg ',' ListArg { (fst $1, (:) (snd $1) (snd $3)) }
 
-Block :: { Toast.AbsToast.Block }
-Block : '{' ListStmt '}' { Toast.AbsToast.Blk $2 }
+Block :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Block) }
+Block
+  : '{' ListStmt '}' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Blk (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $2)) }
 
-ListStmt :: { [Toast.AbsToast.Stmt] }
-ListStmt : {- empty -} { [] } | Stmt ListStmt { (:) $1 $2 }
+ListStmt :: { (Toast.AbsToast.BNFC'Position, [Toast.AbsToast.Stmt]) }
+ListStmt
+  : {- empty -} { (Toast.AbsToast.BNFC'NoPosition, []) }
+  | Stmt ListStmt { (fst $1, (:) (snd $1) (snd $2)) }
 
-Stmt :: { Toast.AbsToast.Stmt }
+Stmt :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Stmt) }
 Stmt
-  : ';' { Toast.AbsToast.Empty }
-  | Block { Toast.AbsToast.BStmt $1 }
-  | Type ListItem ';' { Toast.AbsToast.Decl $1 $2 }
-  | Ident '=' Expr ';' { Toast.AbsToast.Ass $1 $3 }
-  | Ident '++' ';' { Toast.AbsToast.Incr $1 }
-  | Ident '--' ';' { Toast.AbsToast.Decr $1 }
-  | 'return' Expr ';' { Toast.AbsToast.Ret $2 }
-  | 'return' ';' { Toast.AbsToast.VRet }
-  | 'if' '(' Expr ')' Block { Toast.AbsToast.Cond $3 $5 }
-  | 'if' '(' Expr ')' Block 'else' Block { Toast.AbsToast.CondElse $3 $5 $7 }
-  | 'while' '(' Expr ')' Block { Toast.AbsToast.While $3 $5 }
-  | 'break' ';' { Toast.AbsToast.Break }
-  | 'continue' ';' { Toast.AbsToast.Continue }
-  | 'Print' '(' Expr ')' ';' { Toast.AbsToast.SPrint $3 }
-  | Type Ident '(' ListArg ')' Block { Toast.AbsToast.FnDef $1 $2 $4 $6 }
+  : ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Empty (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | Block { (fst $1, Toast.AbsToast.BStmt (fst $1) (snd $1)) }
+  | Type ListItem ';' { (fst $1, Toast.AbsToast.Decl (fst $1) (snd $1) (snd $2)) }
+  | Ident '=' Expr ';' { (fst $1, Toast.AbsToast.Ass (fst $1) (snd $1) (snd $3)) }
+  | Ident '++' ';' { (fst $1, Toast.AbsToast.Incr (fst $1) (snd $1)) }
+  | Ident '--' ';' { (fst $1, Toast.AbsToast.Decr (fst $1) (snd $1)) }
+  | 'return' Expr ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Ret (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $2)) }
+  | 'return' ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.VRet (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | 'if' '(' Expr ')' Block { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Cond (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5)) }
+  | 'if' '(' Expr ')' Block 'else' Block { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.CondElse (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5) (snd $7)) }
+  | 'while' '(' Expr ')' Block { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.While (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5)) }
+  | 'break' ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Break (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | 'continue' ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Continue (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | 'Print' '(' Expr ')' ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.SPrint (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $3)) }
+  | Type Ident '(' ListArg ')' Block { (fst $1, Toast.AbsToast.FnDef (fst $1) (snd $1) (snd $2) (snd $4) (snd $6)) }
 
-Item :: { Toast.AbsToast.Item }
+Item :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Item) }
 Item
-  : Ident { Toast.AbsToast.NoInit $1 }
-  | Ident '=' Expr { Toast.AbsToast.Init $1 $3 }
+  : Ident { (fst $1, Toast.AbsToast.NoInit (fst $1) (snd $1)) }
+  | Ident '=' Expr { (fst $1, Toast.AbsToast.Init (fst $1) (snd $1) (snd $3)) }
 
-ListItem :: { [Toast.AbsToast.Item] }
-ListItem : Item { (:[]) $1 } | Item ',' ListItem { (:) $1 $3 }
+ListItem :: { (Toast.AbsToast.BNFC'Position, [Toast.AbsToast.Item]) }
+ListItem
+  : Item { (fst $1, (:[]) (snd $1)) }
+  | Item ',' ListItem { (fst $1, (:) (snd $1) (snd $3)) }
 
-Type :: { Toast.AbsToast.Type }
+Type :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Type) }
 Type
-  : 'int' { Toast.AbsToast.TInt }
-  | 'string' { Toast.AbsToast.TStr }
-  | 'boolean' { Toast.AbsToast.TBool }
+  : 'int' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.TInt (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | 'string' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.TStr (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | 'boolean' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.TBool (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
 
-ListType :: { [Toast.AbsToast.Type] }
+ListType :: { (Toast.AbsToast.BNFC'Position, [Toast.AbsToast.Type]) }
 ListType
-  : {- empty -} { [] }
-  | Type { (:[]) $1 }
-  | Type ',' ListType { (:) $1 $3 }
+  : {- empty -} { (Toast.AbsToast.BNFC'NoPosition, []) }
+  | Type { (fst $1, (:[]) (snd $1)) }
+  | Type ',' ListType { (fst $1, (:) (snd $1) (snd $3)) }
 
-ExprArg :: { Toast.AbsToast.ExprArg }
+ExprArg :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.ExprArg) }
 ExprArg
-  : Expr { Toast.AbsToast.EArg $1 }
-  | '&' Ident { Toast.AbsToast.EArgRef $2 }
+  : Expr { (fst $1, Toast.AbsToast.EArg (fst $1) (snd $1)) }
+  | '&' Ident { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.EArgRef (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $2)) }
 
-ListExprArg :: { [Toast.AbsToast.ExprArg] }
+ListExprArg :: { (Toast.AbsToast.BNFC'Position, [Toast.AbsToast.ExprArg]) }
 ListExprArg
-  : {- empty -} { [] }
-  | ExprArg { (:[]) $1 }
-  | ExprArg ',' ListExprArg { (:) $1 $3 }
+  : {- empty -} { (Toast.AbsToast.BNFC'NoPosition, []) }
+  | ExprArg { (fst $1, (:[]) (snd $1)) }
+  | ExprArg ',' ListExprArg { (fst $1, (:) (snd $1) (snd $3)) }
 
-Expr6 :: { Toast.AbsToast.Expr }
+Expr6 :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Expr) }
 Expr6
-  : Ident { Toast.AbsToast.EVar $1 }
-  | Integer { Toast.AbsToast.ELitInt $1 }
-  | 'true' { Toast.AbsToast.ELitTrue }
-  | 'false' { Toast.AbsToast.ELitFalse }
-  | Ident '(' ListExprArg ')' { Toast.AbsToast.EApp $1 $3 }
-  | String { Toast.AbsToast.EString $1 }
-  | '(' Expr ')' { $2 }
+  : Ident { (fst $1, Toast.AbsToast.EVar (fst $1) (snd $1)) }
+  | Integer { (fst $1, Toast.AbsToast.ELitInt (fst $1) (snd $1)) }
+  | 'true' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.ELitTrue (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | 'false' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.ELitFalse (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | Ident '(' ListExprArg ')' { (fst $1, Toast.AbsToast.EApp (fst $1) (snd $1) (snd $3)) }
+  | String { (fst $1, Toast.AbsToast.EString (fst $1) (snd $1)) }
+  | '(' Expr ')' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), (snd $2)) }
 
-Expr5 :: { Toast.AbsToast.Expr }
+Expr5 :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Expr) }
 Expr5
-  : '-' Expr6 { Toast.AbsToast.Neg $2 }
-  | '!' Expr6 { Toast.AbsToast.Not $2 }
-  | Expr6 { $1 }
+  : '-' Expr6 { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Neg (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $2)) }
+  | '!' Expr6 { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Not (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $2)) }
+  | Expr6 { (fst $1, (snd $1)) }
 
-Expr4 :: { Toast.AbsToast.Expr }
+Expr4 :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Expr) }
 Expr4
-  : Expr4 MulOp Expr5 { Toast.AbsToast.EMul $1 $2 $3 } | Expr5 { $1 }
+  : Expr4 MulOp Expr5 { (fst $1, Toast.AbsToast.EMul (fst $1) (snd $1) (snd $2) (snd $3)) }
+  | Expr5 { (fst $1, (snd $1)) }
 
-Expr3 :: { Toast.AbsToast.Expr }
+Expr3 :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Expr) }
 Expr3
-  : Expr3 AddOp Expr4 { Toast.AbsToast.EAdd $1 $2 $3 } | Expr4 { $1 }
+  : Expr3 AddOp Expr4 { (fst $1, Toast.AbsToast.EAdd (fst $1) (snd $1) (snd $2) (snd $3)) }
+  | Expr4 { (fst $1, (snd $1)) }
 
-Expr2 :: { Toast.AbsToast.Expr }
+Expr2 :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Expr) }
 Expr2
-  : Expr2 RelOp Expr3 { Toast.AbsToast.ERel $1 $2 $3 } | Expr3 { $1 }
+  : Expr2 RelOp Expr3 { (fst $1, Toast.AbsToast.ERel (fst $1) (snd $1) (snd $2) (snd $3)) }
+  | Expr3 { (fst $1, (snd $1)) }
 
-Expr1 :: { Toast.AbsToast.Expr }
+Expr1 :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Expr) }
 Expr1
-  : Expr2 '&&' Expr1 { Toast.AbsToast.EAnd $1 $3 } | Expr2 { $1 }
+  : Expr2 '&&' Expr1 { (fst $1, Toast.AbsToast.EAnd (fst $1) (snd $1) (snd $3)) }
+  | Expr2 { (fst $1, (snd $1)) }
 
-Expr :: { Toast.AbsToast.Expr }
-Expr : Expr1 '||' Expr { Toast.AbsToast.EOr $1 $3 } | Expr1 { $1 }
+Expr :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.Expr) }
+Expr
+  : Expr1 '||' Expr { (fst $1, Toast.AbsToast.EOr (fst $1) (snd $1) (snd $3)) }
+  | Expr1 { (fst $1, (snd $1)) }
 
-ListExpr :: { [Toast.AbsToast.Expr] }
+ListExpr :: { (Toast.AbsToast.BNFC'Position, [Toast.AbsToast.Expr]) }
 ListExpr
-  : {- empty -} { [] }
-  | Expr { (:[]) $1 }
-  | Expr ',' ListExpr { (:) $1 $3 }
+  : {- empty -} { (Toast.AbsToast.BNFC'NoPosition, []) }
+  | Expr { (fst $1, (:[]) (snd $1)) }
+  | Expr ',' ListExpr { (fst $1, (:) (snd $1) (snd $3)) }
 
-AddOp :: { Toast.AbsToast.AddOp }
-AddOp : '+' { Toast.AbsToast.Plus } | '-' { Toast.AbsToast.Minus }
+AddOp :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.AddOp) }
+AddOp
+  : '+' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Plus (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '-' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Minus (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
 
-MulOp :: { Toast.AbsToast.MulOp }
+MulOp :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.MulOp) }
 MulOp
-  : '*' { Toast.AbsToast.Times }
-  | '/' { Toast.AbsToast.Div }
-  | '%' { Toast.AbsToast.Mod }
+  : '*' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Times (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '/' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Div (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '%' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Mod (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
 
-RelOp :: { Toast.AbsToast.RelOp }
+RelOp :: { (Toast.AbsToast.BNFC'Position, Toast.AbsToast.RelOp) }
 RelOp
-  : '<' { Toast.AbsToast.LTH }
-  | '<=' { Toast.AbsToast.LE }
-  | '>' { Toast.AbsToast.GTH }
-  | '>=' { Toast.AbsToast.GE }
-  | '==' { Toast.AbsToast.EQU }
-  | '!=' { Toast.AbsToast.NE }
+  : '<' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.LTH (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '<=' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.LE (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '>' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.GTH (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '>=' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.GE (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '==' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.EQU (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
+  | '!=' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.NE (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
 
 {
 
@@ -217,5 +231,9 @@ happyError ts = Left $
 myLexer :: String -> [Token]
 myLexer = tokens
 
+-- Entrypoints
+
+pProgram :: [Token] -> Err Toast.AbsToast.Program
+pProgram = fmap snd . pProgram_internal
 }
 

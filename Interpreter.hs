@@ -15,6 +15,7 @@ type Env = Map Var Loc
 type EnvFun = Map String Fun
 type Store = Map Loc Value
 
+type Pos = BNFC'Position
 
 data ArgKind = ByValue | ByReference deriving Show
 data FunArg = FunArg { argKind :: ArgKind, argType :: Type, argName :: Var } deriving Show
@@ -23,7 +24,8 @@ data Value = VInt Integer | VStr String | VBool Bool
 data Fun = Fun { args :: [FunArg], block :: Block, staticEnv :: Env, staticEnvFun :: EnvFun } deriving Show
 data Mem = Mem { env :: Env, store :: Store, envFun :: EnvFun } deriving Show
 data StmtReturnValue = VValue Value | VVoid | VContinue | VBreak deriving Show
-type InterpreterMonad a = ExceptT String (StateT Mem IO) a
+data InterpreterError = InterpreterError { text :: String, position :: Pos } deriving Show
+type InterpreterMonad a = ExceptT InterpreterError (StateT Mem IO) a
 
 instance Show Value where
     show (VInt n) = show n 
@@ -35,56 +37,34 @@ alloc :: Store -> Loc
 alloc = Map.size
 
 
-getLoc :: Var -> InterpreterMonad Loc
-getLoc x = do 
+getLoc :: Var -> Pos -> InterpreterMonad Loc
+getLoc x pos = do 
     memory <- get
     case Map.lookup x (env memory) of
-        Nothing -> except $ Left ("Variable not declared.")
+        Nothing ->  throwError $ InterpreterError { text = "Variable {" ++ x ++ "} is not in the scope.", position = pos}
         Just l -> return l
 
 
-getVal :: Loc -> InterpreterMonad Value
-getVal location = do
-    -- nowyEnvik <- gets env
-    -- liftIO $ putStrLn $ show nowyEnvik
-    -- liftIO $ putStrLn $ show location
+getVal :: Loc -> Pos -> InterpreterMonad Value
+getVal location pos = do
     memory <- get
     case Map.lookup location (store memory) of
-        Nothing -> except $ Left ("No value under given location.")
+        Nothing -> throwError $ InterpreterError { text = "No value under given location.", position = pos}
         Just v -> return v
 
-getFun :: String -> InterpreterMonad Fun
-getFun f = do
+getFun :: String -> Pos -> InterpreterMonad Fun
+getFun f pos = do
     envF <- gets envFun
     case Map.lookup f envF of
-        Nothing -> except $ Left("Function called " ++ f ++ " is not in the scope.")
+        Nothing -> except $ Left $ InterpreterError { text = "Function {" ++ f ++ "} is not in the scope.", position = pos}
         Just fun -> return fun
+
 
 writeLoc :: Loc -> Value -> InterpreterMonad ()
 writeLoc location val = do
     memory <- get
     put (Mem { env = env memory, store = Map.insert location val (store memory), envFun = envFun memory})
     return ()
-
-
-evalAddOp :: AddOp -> Integer -> Integer -> Integer
-evalAddOp Plus = (+)
-evalAddOp Minus = (-)
-
-
-evalMulOp :: MulOp -> Integer -> Integer -> Integer
-evalMulOp Times = (*)
-evalMulOp Div = div
-evalMulOp Mod = mod
-
-
-evalRelOp :: RelOp -> Integer -> Integer -> Bool
-evalRelOp Toast.AbsToast.LTH = (<)
-evalRelOp Toast.AbsToast.LE = (<=)
-evalRelOp Toast.AbsToast.GTH = (>)
-evalRelOp Toast.AbsToast.GE = (>=)
-evalRelOp Toast.AbsToast.EQU = (==)
-evalRelOp Toast.AbsToast.NE = (/=)
 
 
 getBool :: Value -> Bool
@@ -98,75 +78,72 @@ getInt v = case v of
 
 
 evalExpr :: Expr -> InterpreterMonad Value
--- return ints
-evalExpr (ELitInt n) = return (VInt n)
 
-evalExpr (Neg e) = do
+evalExpr (ELitInt _ n) = return (VInt n)
+
+evalExpr (Neg _ e) = do
     v <- evalExpr e 
     let i = getInt v
     return (VInt (-i)) 
 
-evalExpr (EVar (Ident x)) = getLoc x >>= getVal
+evalExpr (EVar pos (Ident x)) = do
+    location <- getLoc x pos
+    getVal location pos
 
-evalExpr (EAdd e1 op e2) = do
-    v1 <- evalExpr e1
-    v2 <- evalExpr e2
-    let i1 = getInt v1 
-    let i2 = getInt v2
-    let simpleOp = evalAddOp op
-    return (VInt (i1 `simpleOp` i2)) 
+evalExpr (EAdd _ e1 op e2) = do
+    (VInt v1) <- evalExpr e1
+    (VInt v2) <- evalExpr e2
+    calcAdd op v1 v2 where
+        calcAdd :: AddOp -> Integer -> Integer -> InterpreterMonad Value
+        calcAdd (Toast.AbsToast.Plus _) a b = return $ VInt $ a + b
+        calcAdd (Toast.AbsToast.Minus _) a b = return $ VInt $ a - b
 
-evalExpr (EMul e1 op e2) = do
+
+evalExpr (EMul pos e1 op e2) = do
     (VInt v1) <- evalExpr e1
     (VInt v2) <- evalExpr e2
     calcMul op v1 v2 where
         calcMul :: MulOp -> Integer -> Integer -> InterpreterMonad Value
-        calcMul (Toast.AbsToast.Times) a b = return $ VInt $ a * b 
-        calcMul (Toast.AbsToast.Div)   _ 0 = throwError $ "Division by zero."
-        calcMul (Toast.AbsToast.Div)   a b = return $ VInt $ a `div` b 
-        calcMul (Toast.AbsToast.Mod)   _ 0 = throwError $ "Modulo by zero."
-        calcMul (Toast.AbsToast.Mod)   a b = return $ VInt $ a `mod` b
+        calcMul (Toast.AbsToast.Times _) a b = return $ VInt $ a * b 
+        calcMul (Toast.AbsToast.Div _)   _ 0 = throwError $ InterpreterError { text = "Division by zero.", position = pos}
+        calcMul (Toast.AbsToast.Div _)   a b = return $ VInt $ a `div` b 
+        calcMul (Toast.AbsToast.Mod _)   _ 0 = throwError $ InterpreterError { text = "Modulo by zero.", position = pos}
+        calcMul (Toast.AbsToast.Mod _)   a b = return $ VInt $ a `mod` b
 
-    -- let simpleOp = evalMulOp op
-    -- return (VInt (v1 `simpleOp` v2)) 
+evalExpr (EString _ s) = return (VStr s)
 
--- return strings
-evalExpr (EString s) = return (VStr s)
+evalExpr (ELitTrue _) = return (VBool True)
 
--- return booleans
-evalExpr (ELitTrue) = return (VBool True)
+evalExpr (ELitFalse _) = return (VBool False)
 
-evalExpr (ELitFalse) = return (VBool False)
+evalExpr (Not _ e) = do
+    (VBool b) <- evalExpr e 
+    return (VBool (not b))
 
-evalExpr (Not e) = do
-    v <- evalExpr e 
-    let i = getBool v
-    return (VBool (not i))
+evalExpr (EOr _ e1 e2) = do
+    (VBool v1) <- evalExpr e1
+    (VBool v2) <- evalExpr e2
+    return (VBool (v1 || v2))
 
-evalExpr (EOr e1 e2) = do
-    v1 <- evalExpr e1
-    v2 <- evalExpr e2
-    let i1 = getBool v1
-    let i2 = getBool v2 
-    return (VBool (i1 || i2))
+evalExpr (EAnd _ e1 e2) = do
+    (VBool v1) <- evalExpr e1
+    (VBool v2) <- evalExpr e2
+    return (VBool (v1 && v2))
 
-evalExpr (EAnd e1 e2) = do
-    v1 <- evalExpr e1
-    v2 <- evalExpr e2
-    let i1 = getBool v1
-    let i2 = getBool v2 
-    return (VBool (i1 && i2))
+evalExpr (ERel _ e1 op e2) = do
+    (VInt v1) <- evalExpr e1
+    (VInt v2) <- evalExpr e2
+    calcRel op v1 v2 where
+        calcRel :: RelOp -> Integer -> Integer -> InterpreterMonad Value
+        calcRel (Toast.AbsToast.LTH _) a b = return $ VBool $ (a < b) 
+        calcRel (Toast.AbsToast.LE _) a b = return $ VBool $ (a <= b) 
+        calcRel (Toast.AbsToast.GTH _) a b = return $ VBool $ (a > b) 
+        calcRel (Toast.AbsToast.GE _) a b = return $ VBool $ (a >= b) 
+        calcRel (Toast.AbsToast.EQU _) a b = return $ VBool $ (a == b) 
+        calcRel (Toast.AbsToast.NE _) a b = return $ VBool $ (a /= b) 
 
-evalExpr (ERel e1 op e2) = do
-    v1 <- evalExpr e1
-    v2 <- evalExpr e2
-    let i1 = getInt v1
-    let i2 = getInt v2
-    let simpleOp = evalRelOp op
-    return (VBool (i1 `simpleOp` i2))
-
-evalExpr (EApp (Ident f) []) = do
-    function <- getFun f
+evalExpr (EApp pos (Ident f) []) = do
+    function <- getFun f pos
     memoryBeforeCall <- get
 
     put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = Map.insert f (function) (staticEnvFun function) })
@@ -177,8 +154,8 @@ evalExpr (EApp (Ident f) []) = do
     case blockValue of
         VValue v -> return v
 
-evalExpr (EApp (Ident f) arguments) = do
-    function <- getFun f
+evalExpr (EApp pos (Ident f) arguments) = do
+    function <- getFun f pos
     memoryBeforeCall <- get
 
     prepareEnv arguments (args function)
@@ -196,30 +173,27 @@ evalExpr (EApp (Ident f) arguments) = do
 
 prepareEnv :: [ExprArg] -> [FunArg] -> InterpreterMonad Env
 
-prepareEnv [] _ = gets env
+prepareEnv _ [] = gets env
 
-prepareEnv ((EArg e) : rest) (funArg : other) = do
-    evalItems (argType funArg) [(Init (Ident (argName funArg)) e)]
+prepareEnv ((EArg pos e) : rest) (funArg : other) = do
+    evalItems (argType funArg) [(Init pos (Ident (argName funArg)) e)]
     prepareEnv rest other
 
-prepareEnv ((EArgRef (Ident x)) : rest) (funArg : other) = do
+prepareEnv ((EArgRef pos (Ident x)) : rest) (funArg : other) = do
     memory <- get
-
-    -- weź lokację zmiennej x
-    referencedLocation <- getLoc x
+    referencedLocation <- getLoc x pos
     let newName = argName funArg
-    -- gets env
     put (Mem { env = Map.insert newName referencedLocation (env memory), store = store memory, envFun = envFun memory})
     prepareEnv rest other
 
 
 execBlock :: Block -> InterpreterMonad StmtReturnValue
 
-execBlock (Blk []) = return VVoid
+execBlock (Blk _ []) = return VVoid
 
-execBlock (Blk stmts) = do
+execBlock (Blk pos stmts) = do
     frozenEnv <- gets env
-    blockReturnValue <- execBlockImpl (Blk stmts)
+    blockReturnValue <- execBlockImpl (Blk pos stmts)
     memory <- get
     put (Mem { env = frozenEnv, store = store memory, envFun = envFun memory })
     return blockReturnValue
@@ -227,31 +201,31 @@ execBlock (Blk stmts) = do
 
 execBlockImpl :: Block -> InterpreterMonad StmtReturnValue
 
-execBlockImpl (Blk []) = return VVoid
-execBlockImpl (Blk (stmt:rest)) = do
+execBlockImpl (Blk _ []) = return VVoid
+execBlockImpl (Blk pos (stmt:rest)) = do
     stmtValue <- execStmt stmt
     case stmtValue of
         (VValue v) -> return stmtValue
         VBreak -> return stmtValue
         VContinue -> return stmtValue
-        VVoid -> execBlockImpl (Blk rest)
+        VVoid -> execBlockImpl (Blk pos rest)
 
 
 evalItems :: Type -> [Item] -> InterpreterMonad StmtReturnValue
 
 evalItems t [] = return VVoid
 
-evalItems t ((NoInit (Ident x)) : rest) = do
+evalItems t ((NoInit _ (Ident x)) : rest) = do
     memory <- get
     let newLoc = alloc (store memory)
     let value = case t of
-                TStr -> VStr ""
-                TInt -> VInt 0
-                TBool -> VBool False
+                (TStr _) -> VStr ""
+                (TInt _) -> VInt 0
+                (TBool _) -> VBool False
     put (Mem { env = Map.insert x newLoc (env memory), store = Map.insert newLoc value (store memory), envFun = envFun memory})
     evalItems t rest
 
-evalItems t ((Init (Ident x) e) : rest) = do
+evalItems t ((Init _ (Ident x) e) : rest) = do
     memory <- get
     let newLoc = alloc (store memory)
     value <- evalExpr e
@@ -261,74 +235,75 @@ evalItems t ((Init (Ident x) e) : rest) = do
 
 execStmt :: Stmt -> InterpreterMonad StmtReturnValue
 
-execStmt (Empty) = return VVoid
+execStmt (Empty _) = return VVoid
 
-execStmt (BStmt block) = execBlock block
+execStmt (BStmt _ block) = execBlock block
 
-execStmt (Decl t items) = evalItems t items
+execStmt (Decl _ t items) = evalItems t items
 
-execStmt (CondElse condition block1 block2) = do
+execStmt (CondElse _ condition block1 block2) = do
     v <- evalExpr condition
     let i = getBool v
     if i == True then execBlock block1 else execBlock block2
 
-execStmt (Cond condition block) = do
+execStmt (Cond pos condition block) = do
     v <- evalExpr condition
     let i = getBool v
-    if i == True then execBlock block else execStmt Empty
+    if i == True then execBlock block else execStmt (Empty pos)
 
-execStmt (While condition block) = do
+execStmt (While pos condition block) = do
     v <- evalExpr condition
     let i = getBool v
     if i == True 
         then do
             blockValue <- execBlock block
             case blockValue of
-                VBreak -> execStmt Empty
-                VContinue -> execStmt (While condition block)
-                VVoid -> execStmt (While condition block)
+                VBreak -> execStmt (Empty pos)
+                VContinue -> execStmt (While pos condition block)
+                VVoid -> execStmt (While pos condition block)
                 (VValue v) -> return blockValue
         else do
-            execStmt Empty
+            execStmt (Empty pos)
 
-execStmt Break = return VBreak
+execStmt (Break _) = return VBreak
 
-execStmt Continue = return VContinue
+execStmt (Continue _) = return VContinue
 
-execStmt VRet = return VVoid
+-- todo - przerobic albo usunac albo wziac pod uwage przy wywolaniu funkcji juz
+execStmt (VRet _) = return VVoid
 
-execStmt (Ret e) = do
+execStmt (Ret _ e) = do
     v <- evalExpr e 
     return $ VValue v
 
-execStmt (Incr (Ident x)) = do
-    location <- getLoc x
-    currentValue <- getVal location
+execStmt (Incr pos (Ident x)) = do
+    location <- getLoc x pos
+    currentValue <- getVal location pos
     let valueInt = getInt currentValue
     writeLoc location (VInt (valueInt + 1))
     return VVoid
 
-execStmt (Decr (Ident x)) = do
-    location <- getLoc x
-    currentValue <- getVal location
+execStmt (Decr pos (Ident x)) = do
+    location <- getLoc x pos
+    currentValue <- getVal location pos
     let valueInt = getInt currentValue
     writeLoc location (VInt (valueInt - 1))
     return VVoid
 
-execStmt (Ass (Ident x) e) = do
-    location <- getLoc x
+execStmt (Ass pos (Ident x) e) = do
+    location <- getLoc x pos
     value <- evalExpr e 
     writeLoc location value
     return VVoid
 
-execStmt (SPrint e) = do
+execStmt (SPrint _ e) = do
     v <- evalExpr e 
     liftIO $ putStrLn $ show v
     return VVoid
 
-execStmt (FnDef t (Ident funName) args block) = do
+execStmt (FnDef _ t (Ident funName) args block) = do
     memory <- get
-    let staticEnv = env memory -- frozen, but with arguments (x, y, z...) overwritten to default value that will be set on calling the function
+    let staticEnv = env memory 
     let staticEnvFun = envFun memory
 
     let newFun = Fun { args = prepareArgs args, block = block, staticEnv = staticEnv, staticEnvFun = staticEnvFun }
@@ -338,14 +313,8 @@ execStmt (FnDef t (Ident funName) args block) = do
 prepareArgs :: [Arg] -> [FunArg]
 prepareArgs args = go args [] where
     go [] mapped = mapped
-    go ((Ar t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByValue, argType = t, argName = x } : mapped)
-    go ((ArgRef t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByReference, argType = t, argName = x } : mapped)
-{-
-Ar.    	Arg ::= Type Ident;
-ArgRef.	Arg ::= Type "&" Ident ;
--}
-
-
+    go ((Ar _ t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByValue, argType = t, argName = x } : mapped)
+    go ((ArgRef _ t (Ident x)) : rest) mapped = go rest (FunArg { argKind = ByReference, argType = t, argName = x } : mapped)
     
 
 runInterpreter :: Program -> IO ()
@@ -353,11 +322,10 @@ runInterpreter prog = execStateT (runExceptT (catchError (runP prog) handleErr))
     emptyMem :: Mem
     emptyMem = Mem { env = Map.empty, store = Map.empty, envFun = Map.empty }
 
-    handleErr :: String -> InterpreterMonad StmtReturnValue
+    handleErr :: InterpreterError -> InterpreterMonad ()
     handleErr err = do
-        liftIO $ putStrLn err
-        return VVoid
+        liftIO $ putStrLn $ show err
+        return ()
 
-    runP :: Program -> InterpreterMonad StmtReturnValue
-    runP (Prg []) = return VVoid
-    runP (Prg (stmt:rest)) = execStmt stmt >> runP (Prg rest)
+    runP :: Program -> InterpreterMonad ()
+    runP (Prg _ stmts) = mapM execStmt stmts >> return ()

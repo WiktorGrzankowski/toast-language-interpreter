@@ -72,7 +72,7 @@ transExpr x = case x of
   Toast.AbsToast.ELitInt integer -> failure x
   Toast.AbsToast.ELitTrue -> failure x
   Toast.AbsToast.ELitFalse -> failure x
-  Toast.AbsToast.EApp ident args -> failure x
+  Toast.AbsToast.EApp ident exprargs -> failure x
   Toast.AbsToast.EString string -> failure x
   Toast.AbsToast.Neg expr -> failure x
   Toast.AbsToast.Not expr -> failure x
