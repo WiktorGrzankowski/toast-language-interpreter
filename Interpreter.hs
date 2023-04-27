@@ -146,30 +146,44 @@ evalExpr (EApp pos (Ident f) []) = do
     function <- getFun f pos
     memoryBeforeCall <- get
 
-    put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = Map.insert f (function) (staticEnvFun function) })
-    blockValue <- execBlock $ block function
-    storeAfterFunction <- gets store
+    if length (args function) /= 0
+        then 
+            throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with a wrong number of arguments. " ++ 
+            "Should be " ++ show (length (args function)) ++ " but was 0."
+            , position = pos} 
+        else do
+            put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = Map.insert f (function) (staticEnvFun function) })
+            blockValue <- execBlock $ block function
+            storeAfterFunction <- gets store
 
-    put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
-    case blockValue of
-        VValue v -> return v
+            put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
+            case blockValue of
+                VValue v -> return v
 
 evalExpr (EApp pos (Ident f) arguments) = do
     function <- getFun f pos
     memoryBeforeCall <- get
+    let isArgCountOk = checkArgumentsCount function arguments
+    if not isArgCountOk 
+        then 
+            throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with a wrong number of arguments. " ++ 
+            "Should be " ++ show (length (args function)) ++ " but was " ++ show (length arguments) ++ "."
+            , position = pos} 
+        else do
+            prepareEnv arguments (args function)
+            memoryWithArguments <- get
 
-    prepareEnv arguments (args function)
-    memoryWithArguments <- get
+            put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
+            blockValue <- execBlock $ block function
+            storeAfterFunction <- gets store
 
-    put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
-    blockValue <- execBlock $ block function
-    storeAfterFunction <- gets store
+            put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
 
-    put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
+            case blockValue of
+                VValue v -> return v
 
-    case blockValue of
-        VValue v -> return v
-    
+checkArgumentsCount :: Fun -> [ExprArg] -> Bool
+checkArgumentsCount function arguments = length arguments == length (args function)
 
 prepareEnv :: [ExprArg] -> [FunArg] -> InterpreterMonad Env
 
