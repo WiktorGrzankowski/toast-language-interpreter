@@ -13,9 +13,9 @@ int f2() {
 }
 
 #int y = 69;
-#int x = f2();
+int x = f2();
 
-#Print(x);
+Print(x);
 #Print(y);
 #Print(f(2));
 Print(e());

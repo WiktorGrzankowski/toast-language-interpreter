@@ -17,7 +17,7 @@ type Store = Map Loc Value
 
 type Pos = BNFC'Position
 
-data ArgKind = ByValue | ByReference deriving Show
+data ArgKind = ByValue | ByReference deriving (Show, Eq)
 data FunArg = FunArg { argKind :: ArgKind, argType :: Type, argName :: Var } deriving Show
 
 data Value = VInt Integer | VStr String | VBool Bool 
@@ -142,48 +142,47 @@ evalExpr (ERel _ e1 op e2) = do
         calcRel (Toast.AbsToast.EQU _) a b = return $ VBool $ (a == b) 
         calcRel (Toast.AbsToast.NE _) a b = return $ VBool $ (a /= b) 
 
-evalExpr (EApp pos (Ident f) []) = do
-    function <- getFun f pos
-    memoryBeforeCall <- get
-
-    if length (args function) /= 0
-        then 
-            throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with a wrong number of arguments. " ++ 
-            "Should be " ++ show (length (args function)) ++ " but was 0."
-            , position = pos} 
-        else do
-            put (Mem { env = staticEnv function, store = store memoryBeforeCall, envFun = Map.insert f (function) (staticEnvFun function) })
-            blockValue <- execBlock $ block function
-            storeAfterFunction <- gets store
-
-            put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
-            case blockValue of
-                VValue v -> return v
-
 evalExpr (EApp pos (Ident f) arguments) = do
     function <- getFun f pos
     memoryBeforeCall <- get
-    let isArgCountOk = checkArgumentsCount function arguments
-    if not isArgCountOk 
+    if not (checkArgumentsCount (args function) arguments)
         then 
             throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with a wrong number of arguments. " ++ 
-            "Should be " ++ show (length (args function)) ++ " but was " ++ show (length arguments) ++ "."
-            , position = pos} 
-        else do
-            prepareEnv arguments (args function)
-            memoryWithArguments <- get
+            "Should be " ++ show (length (args function)) ++ " but was " ++ show (length arguments) ++ ".",
+            position = pos} 
+        else
+            if not (checkArgumentsKind (args function) arguments)
+                then
+                    throwError $ InterpreterError { text = "Function {" ++ f ++ "} called with wrong kinds of arguments. " ++
+                    "Check if all arguments that are expected to be referenes are called by reference.",
+                    position = pos} 
+                else do
+                    prepareEnv arguments (args function)
+                    memoryWithArguments <- get
 
-            put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
-            blockValue <- execBlock $ block function
-            storeAfterFunction <- gets store
+                    put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
+                    blockValue <- execBlock $ block function
+                    storeAfterFunction <- gets store
 
-            put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
+                    put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
 
-            case blockValue of
-                VValue v -> return v
+                    case blockValue of
+                        VValue v -> return v
+    where
+    checkArgumentsCount :: [FunArg] -> [ExprArg] -> Bool
+    checkArgumentsCount functionArguments callArguments = length functionArguments == length callArguments
 
-checkArgumentsCount :: Fun -> [ExprArg] -> Bool
-checkArgumentsCount function arguments = length arguments == length (args function)
+    -- Should be called only when arguments count is correct.
+    checkArgumentsKind :: [FunArg] -> [ExprArg] -> Bool
+    checkArgumentsKind [] _ = True
+    checkArgumentsKind (funArg : rest) ((EArg _ e) : other)
+        | argKind funArg == ByValue = checkArgumentsCount rest other
+        | otherwise = False
+    checkArgumentsKind (funArg : rest) ((EArgRef _ (Ident x)) : other)
+        | argKind funArg == ByReference = checkArgumentsCount rest other
+        | otherwise = False
+
+
 
 prepareEnv :: [ExprArg] -> [FunArg] -> InterpreterMonad Env
 
