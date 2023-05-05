@@ -1,12 +1,11 @@
-string fun(string byValue, int &ByReference) {
-    byValue = "s2";
-    ByReference++;
-    return byValue;
+int sum(int byVal, int &byRef) {
+    byVal++;
+    byRef--;
+    return byVal + byRef;
 }
 
-string s = "s1";
-int toBeChanged = 10;
-string s2 = fun(s, &toBeChanged);
-Print(s2); // s2
-Print(s); // s1
-Print(toBeChanged); // 9
+int v = 1;
+int r = 1;
+int s = sum(v, &r);
+Print(v); // 1
+Print(r); // 0
