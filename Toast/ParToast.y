@@ -107,7 +107,6 @@ Stmt
   | Ident '++' ';' { (fst $1, Toast.AbsToast.Incr (fst $1) (snd $1)) }
   | Ident '--' ';' { (fst $1, Toast.AbsToast.Decr (fst $1) (snd $1)) }
   | 'return' Expr ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Ret (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $2)) }
-  | 'return' ';' { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.VRet (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1))) }
   | 'if' '(' Expr ')' Block { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.Cond (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5)) }
   | 'if' '(' Expr ')' Block 'else' Block { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.CondElse (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5) (snd $7)) }
   | 'while' '(' Expr ')' Block { (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1), Toast.AbsToast.While (uncurry Toast.AbsToast.BNFC'Position (tokenLineCol $1)) (snd $3) (snd $5)) }

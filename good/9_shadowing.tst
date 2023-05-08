@@ -18,5 +18,5 @@ int f2(int a) {
     return a;
 }
 
-Print(f(1)); // a is global, so: 2
-Print(f2(1)); // a is an argument, so:1
+Print(f(1)); // a is local, so: 2
+Print(f2(2)); // a is an argument, so:2

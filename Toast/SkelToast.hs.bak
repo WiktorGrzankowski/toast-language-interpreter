@@ -19,85 +19,85 @@ transIdent :: Toast.AbsToast.Ident -> Result
 transIdent x = case x of
   Toast.AbsToast.Ident string -> failure x
 
-transProgram :: Toast.AbsToast.Program -> Result
+transProgram :: Show a => Toast.AbsToast.Program' a -> Result
 transProgram x = case x of
-  Toast.AbsToast.Prg stmts -> failure x
+  Toast.AbsToast.Prg _ stmts -> failure x
 
-transArg :: Toast.AbsToast.Arg -> Result
+transArg :: Show a => Toast.AbsToast.Arg' a -> Result
 transArg x = case x of
-  Toast.AbsToast.Ar type_ ident -> failure x
-  Toast.AbsToast.ArgRef type_ ident -> failure x
+  Toast.AbsToast.Ar _ type_ ident -> failure x
+  Toast.AbsToast.ArgRef _ type_ ident -> failure x
 
-transBlock :: Toast.AbsToast.Block -> Result
+transBlock :: Show a => Toast.AbsToast.Block' a -> Result
 transBlock x = case x of
-  Toast.AbsToast.Blk stmts -> failure x
+  Toast.AbsToast.Blk _ stmts -> failure x
 
-transStmt :: Toast.AbsToast.Stmt -> Result
+transStmt :: Show a => Toast.AbsToast.Stmt' a -> Result
 transStmt x = case x of
-  Toast.AbsToast.Empty -> failure x
-  Toast.AbsToast.BStmt block -> failure x
-  Toast.AbsToast.Decl type_ items -> failure x
-  Toast.AbsToast.Ass ident expr -> failure x
-  Toast.AbsToast.Incr ident -> failure x
-  Toast.AbsToast.Decr ident -> failure x
-  Toast.AbsToast.Ret expr -> failure x
-  Toast.AbsToast.VRet -> failure x
-  Toast.AbsToast.Cond expr block -> failure x
-  Toast.AbsToast.CondElse expr block1 block2 -> failure x
-  Toast.AbsToast.While expr block -> failure x
-  Toast.AbsToast.Break -> failure x
-  Toast.AbsToast.Continue -> failure x
-  Toast.AbsToast.SPrint expr -> failure x
-  Toast.AbsToast.FnDef type_ ident args block -> failure x
+  Toast.AbsToast.Empty _ -> failure x
+  Toast.AbsToast.BStmt _ block -> failure x
+  Toast.AbsToast.Decl _ type_ items -> failure x
+  Toast.AbsToast.Ass _ ident expr -> failure x
+  Toast.AbsToast.Incr _ ident -> failure x
+  Toast.AbsToast.Decr _ ident -> failure x
+  Toast.AbsToast.Ret _ expr -> failure x
+  Toast.AbsToast.VRet _ -> failure x
+  Toast.AbsToast.Cond _ expr block -> failure x
+  Toast.AbsToast.CondElse _ expr block1 block2 -> failure x
+  Toast.AbsToast.While _ expr block -> failure x
+  Toast.AbsToast.Break _ -> failure x
+  Toast.AbsToast.Continue _ -> failure x
+  Toast.AbsToast.SPrint _ expr -> failure x
+  Toast.AbsToast.FnDef _ type_ ident args block -> failure x
 
-transItem :: Toast.AbsToast.Item -> Result
+transItem :: Show a => Toast.AbsToast.Item' a -> Result
 transItem x = case x of
-  Toast.AbsToast.NoInit ident -> failure x
-  Toast.AbsToast.Init ident expr -> failure x
+  Toast.AbsToast.NoInit _ ident -> failure x
+  Toast.AbsToast.Init _ ident expr -> failure x
 
-transType :: Toast.AbsToast.Type -> Result
+transType :: Show a => Toast.AbsToast.Type' a -> Result
 transType x = case x of
-  Toast.AbsToast.TInt -> failure x
-  Toast.AbsToast.TStr -> failure x
-  Toast.AbsToast.TBool -> failure x
+  Toast.AbsToast.TInt _ -> failure x
+  Toast.AbsToast.TStr _ -> failure x
+  Toast.AbsToast.TBool _ -> failure x
 
-transExprArg :: Toast.AbsToast.ExprArg -> Result
+transExprArg :: Show a => Toast.AbsToast.ExprArg' a -> Result
 transExprArg x = case x of
-  Toast.AbsToast.EArg expr -> failure x
-  Toast.AbsToast.EArgRef ident -> failure x
+  Toast.AbsToast.EArg _ expr -> failure x
+  Toast.AbsToast.EArgRef _ ident -> failure x
 
-transExpr :: Toast.AbsToast.Expr -> Result
+transExpr :: Show a => Toast.AbsToast.Expr' a -> Result
 transExpr x = case x of
-  Toast.AbsToast.EVar ident -> failure x
-  Toast.AbsToast.ELitInt integer -> failure x
-  Toast.AbsToast.ELitTrue -> failure x
-  Toast.AbsToast.ELitFalse -> failure x
-  Toast.AbsToast.EApp ident exprargs -> failure x
-  Toast.AbsToast.EString string -> failure x
-  Toast.AbsToast.Neg expr -> failure x
-  Toast.AbsToast.Not expr -> failure x
-  Toast.AbsToast.EMul expr1 mulop expr2 -> failure x
-  Toast.AbsToast.EAdd expr1 addop expr2 -> failure x
-  Toast.AbsToast.ERel expr1 relop expr2 -> failure x
-  Toast.AbsToast.EAnd expr1 expr2 -> failure x
-  Toast.AbsToast.EOr expr1 expr2 -> failure x
+  Toast.AbsToast.EVar _ ident -> failure x
+  Toast.AbsToast.ELitInt _ integer -> failure x
+  Toast.AbsToast.ELitTrue _ -> failure x
+  Toast.AbsToast.ELitFalse _ -> failure x
+  Toast.AbsToast.EApp _ ident exprargs -> failure x
+  Toast.AbsToast.EString _ string -> failure x
+  Toast.AbsToast.Neg _ expr -> failure x
+  Toast.AbsToast.Not _ expr -> failure x
+  Toast.AbsToast.EMul _ expr1 mulop expr2 -> failure x
+  Toast.AbsToast.EAdd _ expr1 addop expr2 -> failure x
+  Toast.AbsToast.ERel _ expr1 relop expr2 -> failure x
+  Toast.AbsToast.EAnd _ expr1 expr2 -> failure x
+  Toast.AbsToast.EOr _ expr1 expr2 -> failure x
 
-transAddOp :: Toast.AbsToast.AddOp -> Result
+transAddOp :: Show a => Toast.AbsToast.AddOp' a -> Result
 transAddOp x = case x of
-  Toast.AbsToast.Plus -> failure x
-  Toast.AbsToast.Minus -> failure x
+  Toast.AbsToast.Plus _ -> failure x
+  Toast.AbsToast.Minus _ -> failure x
 
-transMulOp :: Toast.AbsToast.MulOp -> Result
+transMulOp :: Show a => Toast.AbsToast.MulOp' a -> Result
 transMulOp x = case x of
-  Toast.AbsToast.Times -> failure x
-  Toast.AbsToast.Div -> failure x
-  Toast.AbsToast.Mod -> failure x
+  Toast.AbsToast.Times _ -> failure x
+  Toast.AbsToast.Div _ -> failure x
+  Toast.AbsToast.Mod _ -> failure x
 
-transRelOp :: Toast.AbsToast.RelOp -> Result
+transRelOp :: Show a => Toast.AbsToast.RelOp' a -> Result
 transRelOp x = case x of
-  Toast.AbsToast.LTH -> failure x
-  Toast.AbsToast.LE -> failure x
-  Toast.AbsToast.GTH -> failure x
-  Toast.AbsToast.GE -> failure x
-  Toast.AbsToast.EQU -> failure x
-  Toast.AbsToast.NE -> failure x
+  Toast.AbsToast.LTH _ -> failure x
+  Toast.AbsToast.LE _ -> failure x
+  Toast.AbsToast.GTH _ -> failure x
+  Toast.AbsToast.GE _ -> failure x
+  Toast.AbsToast.EQU _ -> failure x
+  Toast.AbsToast.NE _ -> failure x

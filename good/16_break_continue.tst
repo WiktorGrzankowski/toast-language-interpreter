@@ -1,6 +1,10 @@
 while (true) {
     Print("break incoming...");
-    break;
+    if (true) {
+        if (true) {
+            break;
+        }
+    }
     Print("hopefully i am not printed");
 }
 

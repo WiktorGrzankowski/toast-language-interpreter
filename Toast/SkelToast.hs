@@ -41,7 +41,6 @@ transStmt x = case x of
   Toast.AbsToast.Incr _ ident -> failure x
   Toast.AbsToast.Decr _ ident -> failure x
   Toast.AbsToast.Ret _ expr -> failure x
-  Toast.AbsToast.VRet _ -> failure x
   Toast.AbsToast.Cond _ expr block -> failure x
   Toast.AbsToast.CondElse _ expr block1 block2 -> failure x
   Toast.AbsToast.While _ expr block -> failure x

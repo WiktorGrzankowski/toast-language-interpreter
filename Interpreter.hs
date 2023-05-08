@@ -7,7 +7,7 @@ import Control.Monad.Except
 import Data.Map as Map
 import Toast.AbsToast
 
-import System.IO
+import System.IO (hPutStrLn, stderr)
 
 type Var = String
 type Loc = Int
@@ -164,22 +164,11 @@ evalExpr (EApp pos (Ident f) arguments) = do
                 prepareEnv arguments (args function)
                 memoryWithArguments <- get
 
-
-                -- liftIO $ putStrLn $ show (env memoryWithArguments) ++ "   jestem w funkcji   "
-                -- liftIO $ putStrLn $ show (store memoryWithArguments) ++ "   to store, jestem w funkcji"
-
                 put (Mem { env = env memoryWithArguments, store = store memoryWithArguments, envFun = Map.insert f (function) (staticEnvFun function) })
                 blockValue <- execBlock $ block function
                 storeAfterFunction <- gets store
 
                 put (Mem { env = env memoryBeforeCall, store = storeAfterFunction, envFun = envFun memoryBeforeCall })    
-
-
-                dupaMem <- get
-                -- liftIO $ putStrLn $ show (env dupaMem) ++ "   WYCHODZE z  funkcji   "
-                -- liftIO $ putStrLn $ show (store dupaMem) ++ "   to store WYCHODZE Z FUNKCJI"
-
-
 
                 case blockValue of
                     VValue v -> return v
@@ -252,12 +241,6 @@ evalItems t ((NoInit _ (Ident x)) : rest) = do
                 (TBool _) -> VBool False
     put (Mem { env = Map.insert x newLoc (env memory), store = Map.insert newLoc value (store memory), envFun = envFun memory})
     
-    
-    
-    -- dupaMem <- get
-    -- liftIO $ putStrLn $ show (env dupaMem) 
-    
-    
     evalItems t rest
 
 evalItems t ((Init _ (Ident x) e) : rest) = do
@@ -268,13 +251,6 @@ evalItems t ((Init _ (Ident x) e) : rest) = do
     memoryAfterEval <- get
 
     put (Mem { env = Map.insert x newLoc (env memory), store = Map.insert newLoc value (store memoryAfterEval), envFun = envFun memory})
-
-
-    -- dupaMem <- get
-    -- liftIO $ putStrLn $ show (env dupaMem) ++ "   zrobilem inita"
-    -- liftIO $ putStrLn $ show (store dupaMem) ++ "  S T O R E zrobilem inita"
-
-
 
     evalItems t rest  
 
@@ -315,19 +291,8 @@ execStmt (Break _) = return VBreak
 
 execStmt (Continue _) = return VContinue
 
--- todo - przerobic albo usunac albo wziac pod uwage przy wywolaniu funkcji juz
-execStmt (VRet _) = return VVoid
-
 execStmt (Ret _ e) = do
     v <- evalExpr e 
-
-    -- dupaMem <- get
-    -- liftIO $ putStrLn $ show (env dupaMem) ++ "  to byl env wlasnie returnuje "
-    -- liftIO $ putStrLn $ show (store dupaMem) ++ "   to byl store wlasnie returnuje"
-
-
-
-
     return $ VValue v
 
 execStmt (Incr pos (Ident x)) = do
@@ -353,13 +318,6 @@ execStmt (Ass pos (Ident x) e) = do
 execStmt (SPrint _ e) = do
     v <- evalExpr e 
     liftIO $ putStrLn $ show v
-
-    -- dupaMem <- get
-    -- liftIO $ putStrLn $ show (env dupaMem) ++ "   printuje sobie   "
-    -- liftIO $ putStrLn $ show (store dupaMem) ++ "   to store printuje sobie"
-    
-    
-    
     return VVoid
 
 execStmt (FnDef _ t (Ident funName) args block) = do
@@ -369,9 +327,6 @@ execStmt (FnDef _ t (Ident funName) args block) = do
 
     let newFun = Fun { args = prepareArgs args, block = block, staticEnv = staticEnv, staticEnvFun = staticEnvFun }
     put (Mem { env = env memory, store = store memory, envFun = Map.insert funName newFun (envFun memory) })
-
-    -- dupaMem <- get
-    -- liftIO $ putStrLn $ show (env dupaMem) 
     return VVoid
 
 prepareArgs :: [Arg] -> [FunArg]
@@ -388,7 +343,7 @@ runInterpreter prog = execStateT (runExceptT (catchError (runP prog) handleErr))
 
     handleErr :: InterpreterError -> InterpreterMonad ()
     handleErr err = do
-        liftIO $ putStrLn $ show err
+        liftIO $ hPutStrLn stderr (show err)
         return ()
 
     runP :: Program -> InterpreterMonad ()

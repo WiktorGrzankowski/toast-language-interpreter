@@ -140,114 +140,114 @@ instance Print Double where
 
 instance Print Toast.AbsToast.Ident where
   prt _ (Toast.AbsToast.Ident i) = doc $ showString i
-instance Print Toast.AbsToast.Program where
+instance Print (Toast.AbsToast.Program' a) where
   prt i = \case
-    Toast.AbsToast.Prg stmts -> prPrec i 0 (concatD [prt 0 stmts])
+    Toast.AbsToast.Prg _ stmts -> prPrec i 0 (concatD [prt 0 stmts])
 
-instance Print Toast.AbsToast.Arg where
+instance Print (Toast.AbsToast.Arg' a) where
   prt i = \case
-    Toast.AbsToast.Ar type_ id_ -> prPrec i 0 (concatD [prt 0 type_, prt 0 id_])
-    Toast.AbsToast.ArgRef type_ id_ -> prPrec i 0 (concatD [prt 0 type_, doc (showString "&"), prt 0 id_])
+    Toast.AbsToast.Ar _ type_ id_ -> prPrec i 0 (concatD [prt 0 type_, prt 0 id_])
+    Toast.AbsToast.ArgRef _ type_ id_ -> prPrec i 0 (concatD [prt 0 type_, doc (showString "&"), prt 0 id_])
 
-instance Print [Toast.AbsToast.Arg] where
+instance Print [Toast.AbsToast.Arg' a] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
-instance Print Toast.AbsToast.Block where
+instance Print (Toast.AbsToast.Block' a) where
   prt i = \case
-    Toast.AbsToast.Blk stmts -> prPrec i 0 (concatD [doc (showString "{"), prt 0 stmts, doc (showString "}")])
+    Toast.AbsToast.Blk _ stmts -> prPrec i 0 (concatD [doc (showString "{"), prt 0 stmts, doc (showString "}")])
 
-instance Print [Toast.AbsToast.Stmt] where
+instance Print [Toast.AbsToast.Stmt' a] where
   prt _ [] = concatD []
   prt _ (x:xs) = concatD [prt 0 x, prt 0 xs]
 
-instance Print Toast.AbsToast.Stmt where
+instance Print (Toast.AbsToast.Stmt' a) where
   prt i = \case
-    Toast.AbsToast.Empty -> prPrec i 0 (concatD [doc (showString ";")])
-    Toast.AbsToast.BStmt block -> prPrec i 0 (concatD [prt 0 block])
-    Toast.AbsToast.Decl type_ items -> prPrec i 0 (concatD [prt 0 type_, prt 0 items, doc (showString ";")])
-    Toast.AbsToast.Ass id_ expr -> prPrec i 0 (concatD [prt 0 id_, doc (showString "="), prt 0 expr, doc (showString ";")])
-    Toast.AbsToast.Incr id_ -> prPrec i 0 (concatD [prt 0 id_, doc (showString "++"), doc (showString ";")])
-    Toast.AbsToast.Decr id_ -> prPrec i 0 (concatD [prt 0 id_, doc (showString "--"), doc (showString ";")])
-    Toast.AbsToast.Ret expr -> prPrec i 0 (concatD [doc (showString "return"), prt 0 expr, doc (showString ";")])
-    Toast.AbsToast.VRet -> prPrec i 0 (concatD [doc (showString "return"), doc (showString ";")])
-    Toast.AbsToast.Cond expr block -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block])
-    Toast.AbsToast.CondElse expr block1 block2 -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block1, doc (showString "else"), prt 0 block2])
-    Toast.AbsToast.While expr block -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block])
-    Toast.AbsToast.Break -> prPrec i 0 (concatD [doc (showString "break"), doc (showString ";")])
-    Toast.AbsToast.Continue -> prPrec i 0 (concatD [doc (showString "continue"), doc (showString ";")])
-    Toast.AbsToast.SPrint expr -> prPrec i 0 (concatD [doc (showString "Print"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString ";")])
-    Toast.AbsToast.FnDef type_ id_ args block -> prPrec i 0 (concatD [prt 0 type_, prt 0 id_, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 block])
+    Toast.AbsToast.Empty _ -> prPrec i 0 (concatD [doc (showString ";")])
+    Toast.AbsToast.BStmt _ block -> prPrec i 0 (concatD [prt 0 block])
+    Toast.AbsToast.Decl _ type_ items -> prPrec i 0 (concatD [prt 0 type_, prt 0 items, doc (showString ";")])
+    Toast.AbsToast.Ass _ id_ expr -> prPrec i 0 (concatD [prt 0 id_, doc (showString "="), prt 0 expr, doc (showString ";")])
+    Toast.AbsToast.Incr _ id_ -> prPrec i 0 (concatD [prt 0 id_, doc (showString "++"), doc (showString ";")])
+    Toast.AbsToast.Decr _ id_ -> prPrec i 0 (concatD [prt 0 id_, doc (showString "--"), doc (showString ";")])
+    Toast.AbsToast.Ret _ expr -> prPrec i 0 (concatD [doc (showString "return"), prt 0 expr, doc (showString ";")])
+    Toast.AbsToast.VRet _ -> prPrec i 0 (concatD [doc (showString "return"), doc (showString ";")])
+    Toast.AbsToast.Cond _ expr block -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block])
+    Toast.AbsToast.CondElse _ expr block1 block2 -> prPrec i 0 (concatD [doc (showString "if"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block1, doc (showString "else"), prt 0 block2])
+    Toast.AbsToast.While _ expr block -> prPrec i 0 (concatD [doc (showString "while"), doc (showString "("), prt 0 expr, doc (showString ")"), prt 0 block])
+    Toast.AbsToast.Break _ -> prPrec i 0 (concatD [doc (showString "break"), doc (showString ";")])
+    Toast.AbsToast.Continue _ -> prPrec i 0 (concatD [doc (showString "continue"), doc (showString ";")])
+    Toast.AbsToast.SPrint _ expr -> prPrec i 0 (concatD [doc (showString "Print"), doc (showString "("), prt 0 expr, doc (showString ")"), doc (showString ";")])
+    Toast.AbsToast.FnDef _ type_ id_ args block -> prPrec i 0 (concatD [prt 0 type_, prt 0 id_, doc (showString "("), prt 0 args, doc (showString ")"), prt 0 block])
 
-instance Print Toast.AbsToast.Item where
+instance Print (Toast.AbsToast.Item' a) where
   prt i = \case
-    Toast.AbsToast.NoInit id_ -> prPrec i 0 (concatD [prt 0 id_])
-    Toast.AbsToast.Init id_ expr -> prPrec i 0 (concatD [prt 0 id_, doc (showString "="), prt 0 expr])
+    Toast.AbsToast.NoInit _ id_ -> prPrec i 0 (concatD [prt 0 id_])
+    Toast.AbsToast.Init _ id_ expr -> prPrec i 0 (concatD [prt 0 id_, doc (showString "="), prt 0 expr])
 
-instance Print [Toast.AbsToast.Item] where
+instance Print [Toast.AbsToast.Item' a] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
-instance Print Toast.AbsToast.Type where
+instance Print (Toast.AbsToast.Type' a) where
   prt i = \case
-    Toast.AbsToast.TInt -> prPrec i 0 (concatD [doc (showString "int")])
-    Toast.AbsToast.TStr -> prPrec i 0 (concatD [doc (showString "string")])
-    Toast.AbsToast.TBool -> prPrec i 0 (concatD [doc (showString "boolean")])
+    Toast.AbsToast.TInt _ -> prPrec i 0 (concatD [doc (showString "int")])
+    Toast.AbsToast.TStr _ -> prPrec i 0 (concatD [doc (showString "string")])
+    Toast.AbsToast.TBool _ -> prPrec i 0 (concatD [doc (showString "boolean")])
 
-instance Print [Toast.AbsToast.Type] where
+instance Print [Toast.AbsToast.Type' a] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
-instance Print Toast.AbsToast.ExprArg where
+instance Print (Toast.AbsToast.ExprArg' a) where
   prt i = \case
-    Toast.AbsToast.EArg expr -> prPrec i 0 (concatD [prt 0 expr])
-    Toast.AbsToast.EArgRef id_ -> prPrec i 0 (concatD [doc (showString "&"), prt 0 id_])
+    Toast.AbsToast.EArg _ expr -> prPrec i 0 (concatD [prt 0 expr])
+    Toast.AbsToast.EArgRef _ id_ -> prPrec i 0 (concatD [doc (showString "&"), prt 0 id_])
 
-instance Print [Toast.AbsToast.ExprArg] where
+instance Print [Toast.AbsToast.ExprArg' a] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
-instance Print Toast.AbsToast.Expr where
+instance Print (Toast.AbsToast.Expr' a) where
   prt i = \case
-    Toast.AbsToast.EVar id_ -> prPrec i 6 (concatD [prt 0 id_])
-    Toast.AbsToast.ELitInt n -> prPrec i 6 (concatD [prt 0 n])
-    Toast.AbsToast.ELitTrue -> prPrec i 6 (concatD [doc (showString "true")])
-    Toast.AbsToast.ELitFalse -> prPrec i 6 (concatD [doc (showString "false")])
-    Toast.AbsToast.EApp id_ exprargs -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 exprargs, doc (showString ")")])
-    Toast.AbsToast.EString str -> prPrec i 6 (concatD [printString str])
-    Toast.AbsToast.Neg expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])
-    Toast.AbsToast.Not expr -> prPrec i 5 (concatD [doc (showString "!"), prt 6 expr])
-    Toast.AbsToast.EMul expr1 mulop expr2 -> prPrec i 4 (concatD [prt 4 expr1, prt 0 mulop, prt 5 expr2])
-    Toast.AbsToast.EAdd expr1 addop expr2 -> prPrec i 3 (concatD [prt 3 expr1, prt 0 addop, prt 4 expr2])
-    Toast.AbsToast.ERel expr1 relop expr2 -> prPrec i 2 (concatD [prt 2 expr1, prt 0 relop, prt 3 expr2])
-    Toast.AbsToast.EAnd expr1 expr2 -> prPrec i 1 (concatD [prt 2 expr1, doc (showString "&&"), prt 1 expr2])
-    Toast.AbsToast.EOr expr1 expr2 -> prPrec i 0 (concatD [prt 1 expr1, doc (showString "||"), prt 0 expr2])
+    Toast.AbsToast.EVar _ id_ -> prPrec i 6 (concatD [prt 0 id_])
+    Toast.AbsToast.ELitInt _ n -> prPrec i 6 (concatD [prt 0 n])
+    Toast.AbsToast.ELitTrue _ -> prPrec i 6 (concatD [doc (showString "true")])
+    Toast.AbsToast.ELitFalse _ -> prPrec i 6 (concatD [doc (showString "false")])
+    Toast.AbsToast.EApp _ id_ exprargs -> prPrec i 6 (concatD [prt 0 id_, doc (showString "("), prt 0 exprargs, doc (showString ")")])
+    Toast.AbsToast.EString _ str -> prPrec i 6 (concatD [printString str])
+    Toast.AbsToast.Neg _ expr -> prPrec i 5 (concatD [doc (showString "-"), prt 6 expr])
+    Toast.AbsToast.Not _ expr -> prPrec i 5 (concatD [doc (showString "!"), prt 6 expr])
+    Toast.AbsToast.EMul _ expr1 mulop expr2 -> prPrec i 4 (concatD [prt 4 expr1, prt 0 mulop, prt 5 expr2])
+    Toast.AbsToast.EAdd _ expr1 addop expr2 -> prPrec i 3 (concatD [prt 3 expr1, prt 0 addop, prt 4 expr2])
+    Toast.AbsToast.ERel _ expr1 relop expr2 -> prPrec i 2 (concatD [prt 2 expr1, prt 0 relop, prt 3 expr2])
+    Toast.AbsToast.EAnd _ expr1 expr2 -> prPrec i 1 (concatD [prt 2 expr1, doc (showString "&&"), prt 1 expr2])
+    Toast.AbsToast.EOr _ expr1 expr2 -> prPrec i 0 (concatD [prt 1 expr1, doc (showString "||"), prt 0 expr2])
 
-instance Print [Toast.AbsToast.Expr] where
+instance Print [Toast.AbsToast.Expr' a] where
   prt _ [] = concatD []
   prt _ [x] = concatD [prt 0 x]
   prt _ (x:xs) = concatD [prt 0 x, doc (showString ","), prt 0 xs]
 
-instance Print Toast.AbsToast.AddOp where
+instance Print (Toast.AbsToast.AddOp' a) where
   prt i = \case
-    Toast.AbsToast.Plus -> prPrec i 0 (concatD [doc (showString "+")])
-    Toast.AbsToast.Minus -> prPrec i 0 (concatD [doc (showString "-")])
+    Toast.AbsToast.Plus _ -> prPrec i 0 (concatD [doc (showString "+")])
+    Toast.AbsToast.Minus _ -> prPrec i 0 (concatD [doc (showString "-")])
 
-instance Print Toast.AbsToast.MulOp where
+instance Print (Toast.AbsToast.MulOp' a) where
   prt i = \case
-    Toast.AbsToast.Times -> prPrec i 0 (concatD [doc (showString "*")])
-    Toast.AbsToast.Div -> prPrec i 0 (concatD [doc (showString "/")])
-    Toast.AbsToast.Mod -> prPrec i 0 (concatD [doc (showString "%")])
+    Toast.AbsToast.Times _ -> prPrec i 0 (concatD [doc (showString "*")])
+    Toast.AbsToast.Div _ -> prPrec i 0 (concatD [doc (showString "/")])
+    Toast.AbsToast.Mod _ -> prPrec i 0 (concatD [doc (showString "%")])
 
-instance Print Toast.AbsToast.RelOp where
+instance Print (Toast.AbsToast.RelOp' a) where
   prt i = \case
-    Toast.AbsToast.LTH -> prPrec i 0 (concatD [doc (showString "<")])
-    Toast.AbsToast.LE -> prPrec i 0 (concatD [doc (showString "<=")])
-    Toast.AbsToast.GTH -> prPrec i 0 (concatD [doc (showString ">")])
-    Toast.AbsToast.GE -> prPrec i 0 (concatD [doc (showString ">=")])
-    Toast.AbsToast.EQU -> prPrec i 0 (concatD [doc (showString "==")])
-    Toast.AbsToast.NE -> prPrec i 0 (concatD [doc (showString "!=")])
+    Toast.AbsToast.LTH _ -> prPrec i 0 (concatD [doc (showString "<")])
+    Toast.AbsToast.LE _ -> prPrec i 0 (concatD [doc (showString "<=")])
+    Toast.AbsToast.GTH _ -> prPrec i 0 (concatD [doc (showString ">")])
+    Toast.AbsToast.GE _ -> prPrec i 0 (concatD [doc (showString ">=")])
+    Toast.AbsToast.EQU _ -> prPrec i 0 (concatD [doc (showString "==")])
+    Toast.AbsToast.NE _ -> prPrec i 0 (concatD [doc (showString "!=")])

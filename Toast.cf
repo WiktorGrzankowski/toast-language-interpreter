@@ -37,8 +37,6 @@ Decr.  		Stmt ::= Ident "--"  ";" ; -- DONE
 
 Ret.   		Stmt ::= "return" Expr ";" ; -- DONE
 
-VRet.  		Stmt ::= "return" ";" ; -- DONE
-
 Cond.  		Stmt ::= "if" "(" Expr ")" Block  ; -- DONE
 
 CondElse.  	Stmt ::= "if" "(" Expr ")" Block "else" Block  ; -- DONE
@@ -61,7 +59,6 @@ TStr.   		Type ::= "string" ;
 
 TBool.  		Type ::= "boolean" ;
 
---Void.  		Type ::= "void" ;
 
 --internal   Fun. Type ::= Type "(" [Type] ")" ;
 

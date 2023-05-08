@@ -39,7 +39,6 @@ data Stmt' a
     | Incr a Ident
     | Decr a Ident
     | Ret a (Expr' a)
-    | VRet a
     | Cond a (Expr' a) (Block' a)
     | CondElse a (Expr' a) (Block' a) (Block' a)
     | While a (Expr' a) (Block' a)
@@ -130,7 +129,6 @@ instance HasPosition Stmt where
     Incr p _ -> p
     Decr p _ -> p
     Ret p _ -> p
-    VRet p -> p
     Cond p _ _ -> p
     CondElse p _ _ _ -> p
     While p _ _ -> p
