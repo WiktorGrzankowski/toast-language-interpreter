@@ -2,4 +2,4 @@ interpreter:
 	ghc --make Main.hs -o interpreter
 
 clean:
-	rm *.o *.hi interpreter/*.o interpreter/*.hi Main
+	rm *.o *.hi Toast/*.o Toast/*.hi interpreter
