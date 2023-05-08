@@ -1,5 +1,5 @@
-main:
-	ghc --make Main.hs
+interpreter:
+	ghc --make Main.hs -o interpreter
 
 clean:
-	rm *.o *.hi Exp/*.o Exp/*.hi Main
+	rm *.o *.hi interpreter/*.o interpreter/*.hi Main
