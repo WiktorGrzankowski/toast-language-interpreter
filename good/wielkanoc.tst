@@ -1,0 +1,21 @@
+int R = 2023;
+
+int a,b,c,d,e,f,g,h,j,k,s,u;
+a = R % 19;
+b = R / 100;
+c = R % 100;
+d = b / 4;
+e = b % 4;
+f =  (b+8) / 25;
+g = (b+f-1) / 3;
+h = (19*a+b-d-g+15) % 30;
+j = c / 4;
+k = c % 4;
+s = (32+2*e+2*j-h-k) % 7;
+u = (a+11*h+22*s) / 451;
+int miesiac = (h+s-7*u+114) / 31;
+int dzien = (h+s-7*u+114) % 31+1;
+Print("w 2023 roku wielkanoc przypadnia dnia");
+Print(dzien);
+Print("miesiaca");
+Print(miesiac);
