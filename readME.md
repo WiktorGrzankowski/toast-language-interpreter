@@ -23,6 +23,9 @@ int outer() {
 Function outer() returns 5;
 In Toast language every function must return a value.
 
+### Function arguments
+Either by value, or by reference - &arg_name;
+
 ### Execution
 Toast does not require main() function, code is executed like in Python.
 
@@ -43,7 +46,13 @@ mment */
 ### Break, continue
 As in other languages.
 
+### Grammar
+Defined in file Toast.cf
+
 ### How to run it?
 In the main folder type `make` and then the interpreter will be able to execute programs
 typed as `./interpreter program` or `cat program | ./interpreter`.
+
+### Examples
+Examples of correct programs are in `good` directory, incorrenct ones in `bad` directory.
 
