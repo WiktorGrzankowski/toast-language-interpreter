@@ -80,7 +80,7 @@ ELitTrue.  Expr6 ::= "true" ; -- DONE
 
 ELitFalse. Expr6 ::= "false" ; -- DONE
 
-EApp.      Expr6 ::= Ident "(" [ExprArg] ")" ; -- !!! TODO
+EApp.      Expr6 ::= Ident "(" [ExprArg] ")"
 
 EString.   Expr6 ::= String ; -- DONE
 
